@@ -1,4 +1,3 @@
-# Not Tested yet
 import http.client
 import json
 
@@ -17,8 +16,6 @@ password = ""
 requestBodyADFS =  "resource=https://" + crmDomain + crmApiPath + "&client_id=" + clientId + "&grant_type=password&username=" + username + "&password=" + password + "&scope=openid&redirect_uri=" + redirectUri
 
 connAdfs = http.client.HTTPSConnection(adfsDomainName)
-
-payload = ""
 
 adfsHeaders = {
     'content-type': "application/x-www-form-urlencoded",
