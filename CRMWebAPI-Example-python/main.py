@@ -14,7 +14,7 @@ username = ""
 password = ""
 
 # Get AuthCode form ADFS
-requestBodyADFS =  "resource=" + crmUrl + "&client_id=" + clientId + "&grant_type=password&username=" + username + "&password=" + password + "&scope=openid&redirect_uri=" + redirectUri
+requestBodyADFS =  "resource=https://" + crmDomain + crmApiPath + "&client_id=" + clientId + "&grant_type=password&username=" + username + "&password=" + password + "&scope=openid&redirect_uri=" + redirectUri
 
 connAdfs = http.client.HTTPSConnection(adfsDomainName)
 
@@ -45,7 +45,7 @@ crmHeaders = {
     'content-type': "application/json"
     }
 
-connCrm.request("GET", crmApiPath, None, crmHeaders)
+connCrm.request("GET", crmApiPath + "WhoAmI()", None, crmHeaders)
 
 crmResponse = connCrm.getresponse()
 crmdata = crmResponse.read()
