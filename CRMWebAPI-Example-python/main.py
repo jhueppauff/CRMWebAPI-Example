@@ -12,6 +12,8 @@ adfsTokenPath = "/adfs/oauth2/token"
 username = ""
 password = ""
 
+crmUrl = "https://" + crmDomain + crmApiPath
+
 # Get AuthCode form ADFS
 requestBodyADFS =  "resource=https://" + crmDomain + crmApiPath + "&client_id=" + clientId + "&grant_type=password&username=" + username + "&password=" + password + "&scope=openid&redirect_uri=" + redirectUri
 
