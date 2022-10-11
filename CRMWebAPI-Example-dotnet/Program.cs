@@ -2,29 +2,35 @@
 using System.Diagnostics;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 
 namespace CRMWebAPI_Example
 {
     class Program
     {
-        private static string clientId = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx";
-        private static string crmUrl = "https://crm.example.org/api/data/v8.2/";
-        private static string redirectUri = "https://crm.example.org";
+        private const string clientId = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx";
+        private const string crmUrl = "https://crm.example.org/api/data/v8.2/";
+        private const string redirectUri = "https://crm.example.org";
 
         private static string username = "";
         private static string password = "";
 
-        private static string adfsTokenURL = "https://adfs.example.org/adfs/oauth2/token";
+        private const string adfsTokenURL = "https://adfs.example.org/adfs/oauth2/token";
 
-        static void Main(string[] args)
+        private static HttpClient client;
+
+        static async Task Main()
         {
+            client = new();
+
             FillUsernameAndPassword();
 
             // Request Token from ADFS
-            string authToken = RequestAuthToken();
+            string authToken = await RequestAuthToken();
 
             if (!string.IsNullOrEmpty(authToken))
             {
@@ -34,31 +40,30 @@ namespace CRMWebAPI_Example
             }
         }
 
-        private static void CallWhoAmIRequest(string authToken)
+        private static async Task CallWhoAmIRequest(string authToken)
         {
-            string releativePath = "WhoAmI";
+            const string releativePath = "WhoAmI";
 
-            Uri uri = new Uri(crmUrl + releativePath);
+            Uri uri = new(crmUrl + releativePath);
 
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(uri);
-            request.Method = "GET";
-            request.Headers.Add("cache-control", "no-cache");
-            request.Headers.Add("Authorization", "Bearer " + authToken);
-            request.ContentType = "application/json";
+            var requestMessage = new HttpRequestMessage(HttpMethod.Get, adfsTokenURL);
+            requestMessage.Headers.Add("Content-Type", "application/json");
+            requestMessage.Headers.Add("cache-control", "no-cache");
+            requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authToken);
+
+            var response = await client.SendAsync(requestMessage);
 
             try
             {
-                var response = request.GetResponse();
+                Stream data = await response.Content.ReadAsStreamAsync();
 
-                Stream data = response.GetResponseStream();
-
-                StreamReader reader = new StreamReader(data);
+                StreamReader reader = new(data);
 
                 Console.Write("Answer from Server:");
                 Console.WriteLine(reader.ReadToEnd());
 
                 reader.Close();
-                response.Close();
+                data.Close();
             }
             catch (WebException wex)
             {
@@ -86,36 +91,32 @@ namespace CRMWebAPI_Example
             }
         }
 
-        private static string RequestAuthToken()
+        private static async Task<string> RequestAuthToken()
         {
             string body = $"resource={crmUrl}&client_id={clientId}&grant_type=password&username={username}&password={password}&scope=openid&redirect_uri={redirectUri}";
-            ASCIIEncoding encoding = new ASCIIEncoding();
+            ASCIIEncoding encoding = new();
             byte[] requestBody = encoding.GetBytes(body);
 
-            Uri uri = new Uri(adfsTokenURL);
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(uri);
+            Uri uri = new(adfsTokenURL);
+            
+            var requestMessage = new HttpRequestMessage(HttpMethod.Post, adfsTokenURL);
+            requestMessage.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
+            requestMessage.Headers.Add("cache-control", "no-cache");
 
-            request.Method = "POST";
-            request.ContentType = "application/x-www-form-urlencoded";
-            request.Headers.Add("cache-control", "no-cache");
+            var response = await client.SendAsync(requestMessage);
 
-            request.ContentLength = requestBody.Length;
 
-            Stream stream = request.GetRequestStream();
+            Stream stream = await response.Content.ReadAsStreamAsync();
             stream.Write(requestBody, 0, requestBody.Length);
 
             try
             {
-                var response = request.GetResponse();
-
-                Stream data = response.GetResponseStream();
-
-                StreamReader reader = new StreamReader(data);
+                StreamReader reader = new(stream);
 
                 var jResponse = JsonConvert.DeserializeObject<System.Collections.Generic.Dictionary<string, object>>(reader.ReadToEnd());
 
                 reader.Close();
-                response.Close();
+                stream.Close();
 
                 return jResponse["access_token"].ToString();
             }
